@@ -3,6 +3,7 @@ package handle
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 	"time"
@@ -10,6 +11,7 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambdacontext"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/hsmtkk/jubilant-happiness/s3"
 	"go.uber.org/zap"
 )
 
@@ -35,7 +37,7 @@ type handlerImpl struct {
 
 func (h *handlerImpl) Handle(ctx context.Context, evt events.S3Event) error {
 	if lc, ok := lambdacontext.FromContext(ctx); ok {
-		h.logger.Infof("AWS Request ID: %s", lc.AwsRequestID)
+		h.logger.Infow("handle", "AWS Request ID", lc.AwsRequestID)
 	}
 
 	bucket := evt.Records[0].S3.Bucket.Name
@@ -44,39 +46,47 @@ func (h *handlerImpl) Handle(ctx context.Context, evt events.S3Event) error {
 	h.logger.Infof("bucket: %s", bucket)
 	h.logger.Infof("key: %s", key)
 
-	if err := h.prepareDirectory(); err != nil {
-		h.logger.Errorf("failed to prepare directory; %w", err)
+	zipContentPath, unzipContentPath, err := h.prepareDirectory()
+	if err != nil {
+		h.logger.Errorw("failed to prepare directory", "error", err)
 		return err
 	}
 
 	sess, err := session.NewSession()
 	if err != nil {
-		e := fmt.Errorf("failed to create a new session")
-		h.logger.Error(e)
-		return e
+		h.logger.Errorw("failed to create a new session", "error", err)
+		return err
 	}
 
-	h.logger.Infof("session: %v", sess)
+	downloader := s3.NewDownloader(h.logger, sess)
+	name, err := downloader.Download(bucket, key, zipContentPath+tempZip)
+	if err != nil {
+		h.logger.Errorw("download failed", "error", err)
+		return err
+	}
+
+	log.Print(unzipContentPath)
+	log.Print(name)
 
 	return nil
 }
 
-func (h *handlerImpl) prepareDirectory() error {
+func (h *handlerImpl) prepareDirectory() (string, string, error) {
 	now := strconv.Itoa(int(time.Now().UnixNano()))
 	zipContentPath := tempZipPath + now + "/"
 	unzipContentPath := tempUnzipPath + now + "/"
 	if _, err := os.Stat(tempArtifactPath); err != nil {
 		if err := os.RemoveAll(tempArtifactPath); err != nil {
-			return fmt.Errorf("failed to remove directory; %s; %w", tempArtifactPath, err)
+			return "", "", fmt.Errorf("failed to remove directory; %s; %w", tempArtifactPath, err)
 		}
 	}
 	if err := h.createDirectory(zipContentPath); err != nil {
-		return err
+		return "", "", err
 	}
 	if err := h.createDirectory(unzipContentPath); err != nil {
-		return err
+		return "", "", err
 	}
-	return nil
+	return zipContentPath, unzipContentPath, nil
 }
 
 func (h *handlerImpl) createDirectory(path string) error {
