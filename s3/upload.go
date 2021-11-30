@@ -27,8 +27,10 @@ type uploaderImpl struct {
 }
 
 func (u *uploaderImpl) Upload(src, dst string) error {
+	u.logger.Infow("upload start", "src", src, "dst", dst)
 	var wg sync.WaitGroup
 	filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
+		u.logger.Infow("handling file", "path", path)
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -53,5 +55,6 @@ func (u *uploaderImpl) Upload(src, dst string) error {
 		return nil
 	})
 	wg.Wait()
+	u.logger.Infow("upload finish")
 	return nil
 }
