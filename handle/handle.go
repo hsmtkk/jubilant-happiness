@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambdacontext"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/hsmtkk/jubilant-happiness/env"
 	"github.com/hsmtkk/jubilant-happiness/s3"
 	"go.uber.org/zap"
 )
@@ -36,6 +37,9 @@ type handlerImpl struct {
 }
 
 func (h *handlerImpl) Handle(ctx context.Context, evt events.S3Event) error {
+	printer := env.New(h.logger)
+	printer.PrintAll()
+
 	if lc, ok := lambdacontext.FromContext(ctx); ok {
 		h.logger.Infow("handle", "AWS Request ID", lc.AwsRequestID)
 	}
@@ -52,11 +56,7 @@ func (h *handlerImpl) Handle(ctx context.Context, evt events.S3Event) error {
 		return err
 	}
 
-	sess, err := session.NewSession()
-	if err != nil {
-		h.logger.Errorw("failed to create a new session", "error", err)
-		return err
-	}
+	sess := session.Must(session.NewSession())
 
 	downloader := s3.NewDownloader(h.logger, sess)
 	name, err := downloader.Download(bucket, key, zipContentPath+tempZip)

@@ -15,6 +15,7 @@ func main() {
 	}
 	defer logger.Sync()
 	sugar := logger.Sugar()
+
 	handler := handle.New(sugar)
 	lambda.Start(handler.Handle)
 }
