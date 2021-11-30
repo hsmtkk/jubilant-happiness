@@ -3,7 +3,6 @@ package handle
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"strconv"
 	"time"
@@ -13,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/hsmtkk/jubilant-happiness/env"
 	"github.com/hsmtkk/jubilant-happiness/s3"
+	"github.com/hsmtkk/jubilant-happiness/zip"
 	"go.uber.org/zap"
 )
 
@@ -59,14 +59,17 @@ func (h *handlerImpl) Handle(ctx context.Context, evt events.S3Event) error {
 	sess := session.Must(session.NewSession())
 
 	downloader := s3.NewDownloader(h.logger, sess)
-	name, err := downloader.Download(bucket, key, zipContentPath+tempZip)
+	downloadedZipPath, err := downloader.Download(bucket, key, zipContentPath+tempZip)
 	if err != nil {
 		h.logger.Errorw("download failed", "error", err)
 		return err
 	}
 
-	log.Print(unzipContentPath)
-	log.Print(name)
+	unzipper := zip.New()
+	if err := unzipper.Unzip(downloadedZipPath, unzipContentPath); err != nil {
+		h.logger.Errorw("unzip failed", "error", err)
+		return err
+	}
 
 	return nil
 }
