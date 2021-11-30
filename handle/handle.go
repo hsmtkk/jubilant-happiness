@@ -40,6 +40,13 @@ func (h *handlerImpl) Handle(ctx context.Context, evt events.S3Event) error {
 	printer := env.New(h.logger)
 	printer.PrintAll()
 
+	dstBucket := os.Getenv("UNZIPPED_ARTIFACT_BUCKET")
+	if dstBucket == "" {
+		e := fmt.Errorf("UNZIPPED_ARTIFACT_BUCKET is not set")
+		h.logger.Error(e)
+		return e
+	}
+
 	if lc, ok := lambdacontext.FromContext(ctx); ok {
 		h.logger.Infow("handle", "AWS Request ID", lc.AwsRequestID)
 	}
@@ -69,6 +76,11 @@ func (h *handlerImpl) Handle(ctx context.Context, evt events.S3Event) error {
 	if err := unzipper.Unzip(downloadedZipPath, unzipContentPath); err != nil {
 		h.logger.Errorw("unzip failed", "error", err)
 		return err
+	}
+
+	uploader := s3.NewUploader(sess, h.logger)
+	if err := uploader.Upload(tempUnzipPath, dstBucket); err != nil {
+		h.logger.Errorw("upload failed", "error", err)
 	}
 
 	return nil
