@@ -10,7 +10,6 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambdacontext"
 	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/hsmtkk/jubilant-happiness/env"
 	"github.com/hsmtkk/jubilant-happiness/s3"
 	"github.com/hsmtkk/jubilant-happiness/zip"
 	"go.uber.org/zap"
@@ -37,8 +36,10 @@ type handlerImpl struct {
 }
 
 func (h *handlerImpl) Handle(ctx context.Context, evt events.S3Event) error {
-	printer := env.New(h.logger)
-	printer.PrintAll()
+	//printer := env.New(h.logger)
+	//printer.PrintAll()
+
+	h.logger.Infof("version", "version", 1)
 
 	dstBucket := os.Getenv("UNZIPPED_ARTIFACT_BUCKET")
 	if dstBucket == "" {
@@ -82,6 +83,8 @@ func (h *handlerImpl) Handle(ctx context.Context, evt events.S3Event) error {
 	if err := uploader.Upload(tempUnzipPath, dstBucket); err != nil {
 		h.logger.Errorw("upload failed", "error", err)
 	}
+
+	h.logger.Info("handler finish")
 
 	return nil
 }

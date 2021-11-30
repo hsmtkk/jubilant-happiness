@@ -35,7 +35,9 @@ func (z *unzipperImpl) Unzip(src, dst string) error {
 
 		path := filepath.Join(dst, f.Name)
 		if f.FileInfo().IsDir() {
-			os.MkdirAll(path, f.Mode())
+			if err := os.MkdirAll(path, f.Mode()); err != nil {
+				return fmt.Errorf("failed to create directory; %s; %w", path, err)
+			}
 		} else {
 			f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
 			if err != nil {

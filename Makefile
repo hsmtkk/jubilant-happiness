@@ -1,5 +1,5 @@
 build:
-	DOCKER_BUILDKIT=1 docker build -t github.com/hsmtkk/jubilant-happiness .
+	DOCKER_BUILDKIT=0 docker build -t github.com/hsmtkk/jubilant-happiness .
 
 run:
 	docker run --rm github.com/hsmtkk/jubilant-happiness
